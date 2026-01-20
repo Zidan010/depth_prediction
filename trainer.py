@@ -24,7 +24,7 @@ from layers import *
 import datasets
 import networks
 from IPython import embed
-
+import shutil
 
 class Trainer:
     def __init__(self, options):
@@ -117,8 +117,25 @@ class Trainer:
 
         fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
 
+        # train_filenames = readlines(fpath.format("train"))
+        # val_filenames = readlines(fpath.format("val"))
+
+#############################################################
+
         train_filenames = readlines(fpath.format("train"))
         val_filenames = readlines(fpath.format("val"))
+
+        # Store filenames as instance variables
+        self.train_filenames = train_filenames
+        self.val_filenames = val_filenames
+
+        # Copy split images to separate folder in current directory
+        # This maintains the exact same structure as the input dataset
+        self.copy_split_images()
+
+#############################################################
+
+
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_filenames)
@@ -166,6 +183,130 @@ class Trainer:
             len(train_dataset), len(val_dataset)))
 
         self.save_opts()
+
+
+
+
+
+###########################################
+
+    def copy_split_images(self):
+        """Copy all images from train and val splits to a separate folder in the current directory
+        maintaining the same structure as the input dataset
+        """
+        print("\nCopying split images to current directory...")
+        
+        # Create base directory for copied images in the current working directory
+        split_copy_dir = os.path.join(os.getcwd(), "copied_dataset")
+        
+        # Copy training images
+        print("Copying training images...")
+        train_count = self.copy_images_from_filelist(
+            self.train_filenames, 
+            split_copy_dir
+        )
+        
+        # Copy validation images
+        print("Copying validation images...")
+        val_count = self.copy_images_from_filelist(
+            self.val_filenames, 
+            split_copy_dir
+        )
+        
+        print(f"\nImage copying complete!")
+        print(f"  - Training images copied: {train_count}")
+        print(f"  - Validation images copied: {val_count}")
+        print(f"  - Location: {split_copy_dir}")
+        print(f"  - Structure: Same as input dataset\n")
+
+    def copy_images_from_filelist(self, filenames, dest_base_dir):
+        """Copy images from a list of filenames to destination directory
+        maintaining the exact same folder structure as the source dataset
+        
+        Args:
+            filenames: List of filenames from the split file
+            dest_base_dir: Base destination directory (will recreate source structure inside)
+            
+        Returns:
+            Number of images successfully copied
+        """
+        img_ext = '.png' if self.opt.png else '.jpg'
+        copied_count = 0
+        copied_files = set()  # To avoid copying the same file multiple times
+        
+        for filename in filenames:
+            # Parse the filename (format: folder frame_index side)
+            parts = filename.split()
+            folder = parts[0]
+            
+            if len(parts) == 3:  # KITTI format
+                frame_index = int(parts[1])
+                side = parts[2]
+                
+                # Construct source path (READ ONLY - won't modify)
+                if self.opt.dataset == "kitti":
+                    # For KITTI RAW: data_path/folder/image_02(or 03)/data/0000000000.png
+                    image_folder = "image_0{}/data".format(2 if side == "l" else 3)
+                    image_name = "{:010d}{}".format(frame_index, img_ext)
+                    
+                    source_path = os.path.join(
+                        self.opt.data_path,
+                        folder,
+                        image_folder,
+                        image_name
+                    )
+                    
+                    # Maintain exact same structure in destination
+                    dest_path = os.path.join(
+                        dest_base_dir,
+                        folder,
+                        image_folder,
+                        image_name
+                    )
+                    
+                else:  # kitti_odom
+                    # For KITTI Odometry: data_path/sequences/00/image_2/000000.png
+                    sequence = int(folder)
+                    image_folder = "image_{}".format(2 if side == "l" else 3)
+                    image_name = "{}{}".format(str(frame_index).zfill(6), img_ext)
+                    
+                    source_path = os.path.join(
+                        self.opt.data_path,
+                        "sequences/{:02d}".format(sequence),
+                        image_folder,
+                        image_name
+                    )
+                    
+                    # Maintain exact same structure in destination
+                    dest_path = os.path.join(
+                        dest_base_dir,
+                        "sequences/{:02d}".format(sequence),
+                        image_folder,
+                        image_name
+                    )
+                
+                # Skip if already copied (avoid duplicates)
+                if dest_path in copied_files:
+                    continue
+                
+                # Copy the file (READ from source, WRITE to new location only)
+                if os.path.exists(source_path):
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    shutil.copy2(source_path, dest_path)  # Only copies, doesn't modify source
+                    copied_files.add(dest_path)
+                    copied_count += 1
+                    
+                    if copied_count % 100 == 0:  # Progress indicator
+                        print(f"  Copied {copied_count} images...")
+                else:
+                    print(f"Warning: Source file not found: {source_path}")
+        
+        return copied_count
+
+###########################################
+
+
+
 
     def set_train(self):
         """Convert all models to training mode
