@@ -53,7 +53,7 @@ class Trainer:
 
         # self.models["encoder"] = networks.ResnetEncoder(
         #     self.opt.num_layers, self.opt.weights_init == "pretrained")
-        self.model["encoder"] = networks.MobileNetEncoder()
+        self.models["encoder"] = networks.MobileNetEncoder()
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters())
 
@@ -63,7 +63,7 @@ class Trainer:
         self.parameters_to_train += list(self.models["depth"].parameters())
 
         if self.use_pose_net:
-            if self.opt.pose_model_type == "seperate_mobilenet":
+            if self.opt.pose_model_type == "separate_mobilenet":
             # if self.opt.pose_model_type == "separate_resnet":
                 self.models["pose_encoder"] = networks.MobileNetEncoder(
                     num_input_images=self.num_pose_frames)
