@@ -46,10 +46,10 @@ class MobileNetEncoder(nn.Module):
 
         return features
 
-mobile_enc = MobileNetEncoder()
-x = torch.randn(1, 3, 192, 640)
-features = mobile_enc(x)
+# mobile_enc = MobileNetEncoder()
+# x = torch.randn(1, 3, 192, 640)
+# features = mobile_enc(x)
 
-for idx, f in enumerate(features):
-    print(f"{idx}: shape {features[idx].shape}")
+# for idx, f in enumerate(features):
+#     print(f"{idx}: shape {features[idx].shape}")
 
