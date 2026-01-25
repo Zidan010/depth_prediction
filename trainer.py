@@ -51,7 +51,7 @@ class Trainer:
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")
 
-        if self.opt.enocder_model == 'resnet':
+        if self.opt.encoder_model == 'resnet':
             self.models["encoder"] = networks.ResnetEncoder(
                 self.opt.num_layers, self.opt.weights_init == "pretrained")
         else:
