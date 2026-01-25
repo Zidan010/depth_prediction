@@ -51,9 +51,12 @@ class Trainer:
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")
 
-        # self.models["encoder"] = networks.ResnetEncoder(
-        #     self.opt.num_layers, self.opt.weights_init == "pretrained")
-        self.models["encoder"] = networks.MobileNetEncoder()
+        if self.opt.enocder_model == 'resnet':
+            self.models["encoder"] = networks.ResnetEncoder(
+                self.opt.num_layers, self.opt.weights_init == "pretrained")
+        else:
+            self.models["encoder"] = networks.MobileNetEncoder()
+        
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters()) 
         self.models["depth"] = networks.DepthDecoder(
@@ -68,6 +71,21 @@ class Trainer:
                     num_input_images=self.num_pose_frames)
 
                 self.models["pose_encoder"].to(self.device)
+                self.parameters_to_train += list(self.models["pose_encoder"].parameters())
+
+                self.models["pose"] = networks.PoseDecoder(
+                    self.models["pose_encoder"].num_ch_enc,
+                    num_input_features=1,
+                    num_frames_to_predict_for=2)
+            
+            elif self.opt.pose_model_type == "separate_resnet":
+                self.models["pose_encoder"] = networks.ResnetEncoder(
+                    self.opt.num_layers,
+                    self.opt.weights_init == 'pretrained',
+                    num_input_images=self.num_pose_frames
+                )
+
+                self.models['pose_encoder'].to(self.device)
                 self.parameters_to_train += list(self.models["pose_encoder"].parameters())
 
                 self.models["pose"] = networks.PoseDecoder(
@@ -422,7 +440,7 @@ class Trainer:
                         pose_inputs = [pose_feats[0], pose_feats[f_i]]
 
                     # if self.opt.pose_model_type == "separate_resnet":
-                    if self.opt.pose_model_type == "separate_mobilenet":
+                    if self.opt.pose_model_type == "separate_mobilenet" or self.opt.pose_model_type == 'separate_resnet':
                         pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
                     elif self.opt.pose_model_type == "posecnn":
                         pose_inputs = torch.cat(pose_inputs, 1)
@@ -438,12 +456,12 @@ class Trainer:
         else:
             # Here we input all frames to the pose net (and predict all poses) together
             # if self.opt.pose_model_type in ["separate_resnet", "posecnn"]:
-            if self.opt.pose_model_type in ["separate_mobilenet", "posecnn"]:
+            if self.opt.pose_model_type in ["separate_mobilenet", "separate_resnet", "posecnn"]:
                 pose_inputs = torch.cat(
                     [inputs[("color_aug", i, 0)] for i in self.opt.frame_ids if i != "s"], 1)
 
                 # if self.opt.pose_model_type == "separate_resnet":
-                if self.opt.pose_model_type == "separate_mobilenet":
+                if self.opt.pose_model_type == "separate_mobilenet" or self.opt.pose_model_type == 'separate_resnet':
                     pose_inputs = [self.models["pose_encoder"](pose_inputs)]
 
             elif self.opt.pose_model_type == "shared":
