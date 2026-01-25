@@ -29,7 +29,8 @@ class MobileNetEncoder(nn.Module):
 
             self.encoder[0][0] = new_conv
 
-        self.num_ch_enc = np.array([16, 24, 32, 64, 160])
+        # self.num_ch_enc = np.array([16, 24, 32, 64, 160])
+        self.num_ch_enc = np.array([32, 24, 32, 64, 160])
 
         self.feature_idxs = [0, 2, 4, 7, 14]
 
