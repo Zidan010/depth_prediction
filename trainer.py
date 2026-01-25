@@ -55,8 +55,7 @@ class Trainer:
         #     self.opt.num_layers, self.opt.weights_init == "pretrained")
         self.models["encoder"] = networks.MobileNetEncoder()
         self.models["encoder"].to(self.device)
-        self.parameters_to_train += list(self.models["encoder"].parameters())
-
+        self.parameters_to_train += list(self.models["encoder"].parameters()) 
         self.models["depth"] = networks.DepthDecoder(
             self.models["encoder"].num_ch_enc, self.opt.scales)
         self.models["depth"].to(self.device)
