@@ -25,11 +25,17 @@ class MonodepthOptions:
             help="path to the training data",
             default=os.path.join(file_dir, "kitti_data"),
         )
+     #    self.parser.add_argument(
+     #        "--log_dir",
+     #        type=str,
+     #        help="log directory",
+     #        default=os.path.join(os.path.expanduser("~"), "tmp"),
+     #    )
         self.parser.add_argument(
             "--log_dir",
             type=str,
             help="log directory",
-            default=os.path.join(os.path.expanduser("~"), "tmp"),
+            default=os.path.join(file_dir, "experiments"),
         )
 
         # TRAINING options
@@ -168,9 +174,8 @@ class MonodepthOptions:
             "--encoder_model",
             type=str,
             help="Encoder model, either resnet or mobilenet",
-            default='mobilenet',
-            choices=["mobilenet", "resnet"]
-
+            default="mobilenet",
+            choices=["mobilenet", "resnet"],
         )
 
         # SYSTEM options
