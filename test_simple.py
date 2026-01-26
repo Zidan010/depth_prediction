@@ -30,18 +30,40 @@ def parse_args():
 
     parser.add_argument('--image_path', type=str,
                         help='path to a test image or folder of images', required=True)
-    parser.add_argument('--model_name', type=str,
-                        help='name of a pretrained model to use',
-                        choices=[
-                            "mono_640x192",
-                            "stereo_640x192",
-                            "mono+stereo_640x192",
-                            "mono_no_pt_640x192",
-                            "stereo_no_pt_640x192",
-                            "mono+stereo_no_pt_640x192",
-                            "mono_1024x320",
-                            "stereo_1024x320",
-                            "mono+stereo_1024x320"])
+    parser.add_argument(
+        '--model_name',
+        type=str,
+        default=None,
+        help='model name (used only if --model_path is not provided)'
+    )
+
+    parser.add_argument(
+        '--model_path',
+        type=str,
+        default=None,
+        help='path to a trained model directory containing encoder.pth and depth.pth'
+    )
+
+    # parser.add_argument('--model_name', type=str,
+    #                     help='name of a pretrained model to use',
+    #                     choices=[
+    #                         "mono_640x192",
+    #                         "stereo_640x192",
+    #                         "mono+stereo_640x192",
+    #                         "mono_no_pt_640x192",
+    #                         "stereo_no_pt_640x192",
+    #                         "mono+stereo_no_pt_640x192",
+    #                         "mono_1024x320",
+    #                         "stereo_1024x320",
+    #                         "mono+stereo_1024x320"])
+
+    parser.add_argument(
+        '--encoder',
+        type=str,
+        default='mobilenet',
+        help='which encoder model to use: mobilenet or resnet. Default mobilenet'
+    )
+
     parser.add_argument('--ext', type=str,
                         help='image extension to search for in folder', default="jpg")
     parser.add_argument("--no_cuda",
@@ -58,28 +80,53 @@ def parse_args():
 def test_simple(args):
     """Function to predict for a single image or folder of images
     """
-    assert args.model_name is not None, \
-        "You must specify the --model_name parameter; see README.md for an example"
+    # assert args.model_name is not None, \
+    #     "You must specify the --model_name parameter; see README.md for an example"
+    assert args.model_name is not None or args.model_path is not None, \
+        "You must specify either --model_name or --model_path"
 
     if torch.cuda.is_available() and not args.no_cuda:
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
+    
+    if args.model_path is not None:
+        model_path = args.model_path
+        assert os.path.isdir(model_path), f"Model path does not exist: {model_path}"
+    else:
+        download_model_if_doesnt_exist(args.model_name)
+        model_path = os.path.join("models", args.model_name)
+    
+    print(f"-> Loading model from {model_path}")
 
-    if args.pred_metric_depth and "stereo" not in args.model_name:
-        print("Warning: The --pred_metric_depth flag only makes sense for stereo-trained KITTI "
-              "models. For mono-trained models, output depths will not in metric space.")
+    # if args.pred_metric_depth and "stereo" not in args.model_name:
+    #     print("Warning: The --pred_metric_depth flag only makes sense for stereo-trained KITTI "
+    #           "models. For mono-trained models, output depths will not in metric space.")
 
-    download_model_if_doesnt_exist(args.model_name)
-    model_path = os.path.join("models", args.model_name)
-    print("-> Loading model from ", model_path)
+    if args.pred_metric_depth and args.model_name is not None:
+        if "stereo" not in args.model_name:
+            print(
+                "Warning: --pred_metric_depth only makes sense for stereo-trained models. "
+                "For mono-trained models, depth will not be metric."
+            )
+
+    # download_model_if_doesnt_exist(args.model_name)
+    # model_path = os.path.join("models", args.model_name)
+    # print("-> Loading model from ", model_path)
     encoder_path = os.path.join(model_path, "encoder.pth")
     depth_decoder_path = os.path.join(model_path, "depth.pth")
 
     # LOADING PRETRAINED MODEL
-    print("   Loading pretrained encoder")
-    encoder = networks.ResnetEncoder(18, False)
-    loaded_dict_enc = torch.load(encoder_path, map_location=device)
+    if args.encoder == 'resnet':
+        print(f"   Loading pretrained encoder [{args.encoder}]")
+        encoder = networks.ResnetEncoder(18, False)
+        loaded_dict_enc = torch.load(encoder_path, map_location=device)
+
+    else:
+        print(f"   Loading pretrained encoder [{args.encoder}]")
+        encoder = networks.MobileNetEncoder()
+        loaded_dict_enc = torch.load(encoder_path, map_location=device)
+
 
     # extract the height and width of image that this model was trained with
     feed_height = loaded_dict_enc['height']
