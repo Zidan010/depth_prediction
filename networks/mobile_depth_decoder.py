@@ -1,11 +1,13 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from collections import OrderedDict
+
 
 class DWUpsample(nn.Module):
     """
-    Depthwise transposed convolution for upsampling.
-    Depthwise is chosen to reduce compute and memory.
+    Depthwise transposed convolution for spatial upsampling.
+    NOTE: This preserves channel count.
     """
     def __init__(self, channels):
         super().__init__()
@@ -15,7 +17,7 @@ class DWUpsample(nn.Module):
             kernel_size=4,
             stride=2,
             padding=1,
-            groups=channels,  # Depthwise
+            groups=channels,   # depthwise
             bias=False
         )
 
@@ -26,47 +28,69 @@ class DWUpsample(nn.Module):
 class MobileDepthDecoder(nn.Module):
     """
     Mobile-Aware Depth Decoder (MAD)
-    - additive skip fusion (memory-efficient)
-    - depthwise upsampling
-    - single-scale output (scale 0)
+
+    Key properties:
+    - Additive skip fusion (no concat)
+    - Depthwise upsampling
+    - Explicit channel transitions (1x1 convs)
+    - Single-scale depth output (scale 0)
     """
 
     def __init__(self, num_ch_enc):
         super().__init__()
 
         self.num_ch_enc = num_ch_enc
-        self.num_scales = 1  # We only need the main output
+        self.num_scales = 1
 
-        # Conservatively chosen decoder widths (small memory footprint)
+        # Decoder channel widths (low-memory, mobile-safe)
+        # Must align with skip projections
         self.num_ch_dec = [16, 24, 32, 64, 160]
 
         self.convs = OrderedDict()
 
-        # Project encoder skips to decoder dims with 1x1 conv
+        # --------------------------------------------------
+        # 1. Project encoder features → decoder channels
+        # --------------------------------------------------
         for i in range(5):
             self.convs[f"skip_proj_{i}"] = nn.Conv2d(
-                num_ch_enc[i],
+                self.num_ch_enc[i],
                 self.num_ch_dec[i],
                 kernel_size=1,
                 bias=False
             )
 
-        # Build decoder blocks with depthwise operations
+        # --------------------------------------------------
+        # 2. Decoder blocks (top-down)
+        # --------------------------------------------------
         for i in range(4, -1, -1):
-            self.convs[f"up_{i}"] = DWUpsample(self.num_ch_dec[i])
 
+            # a) Upsample (preserves channels)
+            in_ch = self.num_ch_dec[i + 1] if i < 4 else self.num_ch_dec[4]
+            self.convs[f"up_{i}"] = DWUpsample(in_ch)
+
+            # b) Channel reduction AFTER upsampling
+            self.convs[f"up_proj_{i}"] = nn.Conv2d(
+                in_ch,
+                self.num_ch_dec[i],
+                kernel_size=1,
+                bias=False
+            )
+
+            # c) Depthwise-separable refinement
             self.convs[f"conv_{i}"] = nn.Sequential(
+                # depthwise
                 nn.Conv2d(
                     self.num_ch_dec[i],
                     self.num_ch_dec[i],
                     kernel_size=3,
                     padding=1,
-                    groups=self.num_ch_dec[i],  # Depthwise
+                    groups=self.num_ch_dec[i],
                     bias=False
                 ),
                 nn.BatchNorm2d(self.num_ch_dec[i]),
                 nn.ReLU(inplace=True),
 
+                # pointwise
                 nn.Conv2d(
                     self.num_ch_dec[i],
                     self.num_ch_dec[i],
@@ -77,33 +101,54 @@ class MobileDepthDecoder(nn.Module):
                 nn.ReLU(inplace=True),
             )
 
-        # Depth head for final output
+        # --------------------------------------------------
+        # 3. Final depth head (single-scale)
+        # --------------------------------------------------
         self.disp_head = nn.Sequential(
             nn.Conv2d(self.num_ch_dec[0], 1, kernel_size=3, padding=1),
             nn.Sigmoid()
         )
 
+        # Register all layers
         self.net = nn.ModuleList(self.convs.values())
 
     def forward(self, input_features):
+        """
+        input_features:
+            list of 5 tensors from encoder
+            resolutions: [1/2, 1/4, 1/8, 1/16, 1/32]
+        """
+
+        # Start from deepest feature
         x = self.convs["skip_proj_4"](input_features[4])
+
         for i in range(4, -1, -1):
+
+            # Upsample spatially
             x = self.convs[f"up_{i}"](x)
 
+            # Reduce channels
+            x = self.convs[f"up_proj_{i}"](x)
+
+            # Project skip
             skip = self.convs[f"skip_proj_{i}"](input_features[i])
 
+            # Ensure spatial alignment (KITTI odd sizes)
             if x.shape[-2:] != skip.shape[-2:]:
-                x = nn.functional.interpolate(
+                x = F.interpolate(
                     x,
                     size=skip.shape[-2:],
-                    mode='bilinear',
+                    mode="bilinear",
                     align_corners=False
                 )
 
-            # Additive fusion (no channel explosion)
+            # Additive fusion (memory-efficient)
             x = x + skip
 
+            # Refinement
             x = self.convs[f"conv_{i}"](x)
 
         disp = self.disp_head(x)
+
         return {("disp", 0): disp}
+
