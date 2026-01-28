@@ -54,13 +54,20 @@ class Trainer:
         if self.opt.encoder_model == 'resnet':
             self.models["encoder"] = networks.ResnetEncoder(
                 self.opt.num_layers, self.opt.weights_init == "pretrained")
+            self.models['depth'] = networks.DepthDecoder(
+                self.model['encoder'].num_ch_enc, self.opt.scales
+            )
+
         else:
             self.models["encoder"] = networks.MobileNetEncoder()
+            self.models['depth'] = networks.MobileDepthDecoder(
+                self.model['encoder'].num_ch_enc
+            )
         
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters()) 
-        self.models["depth"] = networks.DepthDecoder(
-            self.models["encoder"].num_ch_enc, self.opt.scales)
+        # self.models["depth"] = networks.DepthDecoder(
+        #     self.models["encoder"].num_ch_enc, self.opt.scales)
         self.models["depth"].to(self.device)
         self.parameters_to_train += list(self.models["depth"].parameters())
 
