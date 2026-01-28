@@ -92,6 +92,14 @@ class MobileDepthDecoder(nn.Module):
 
             skip = self.convs[f"skip_proj_{i}"](input_features[i])
 
+            if x.shape[-2:] != skip.shape[-2:]:
+                x = nn.functional.interpolate(
+                    x,
+                    size=skip.shape[-2:],
+                    mode='bilinear',
+                    align_corners=False
+                )
+
             # Additive fusion (no channel explosion)
             x = x + skip
 
