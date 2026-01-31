@@ -25,6 +25,9 @@ class DepthDecoder(nn.Module):
 
         self.num_ch_enc = num_ch_enc
         self.num_ch_dec = np.array([16, 32, 64, 128, 256])
+        
+        # for memory profiling
+        self.mem_tracker = None
 
         # decoder
         self.convs = OrderedDict()
@@ -50,16 +53,35 @@ class DepthDecoder(nn.Module):
     def forward(self, input_features):
         self.outputs = {}
 
+        if self.mem_tracker is not None:
+            self.mem_tracker.records.clear()
+
         # decoder
         x = input_features[-1]
+
+        if self.mem_tracker:
+            self.mem_tracker.record("encoder_out", x)
+
         for i in range(4, -1, -1):
             x = self.convs[("upconv", i, 0)](x)
+            if self.mem_tracker:
+                self.mem_tracker.records(f"upconv_{i}_0", x)
+
             x = [upsample(x)]
             if self.use_skips and i > 0:
                 x += [input_features[i - 1]]
             x = torch.cat(x, 1)
+            if self.mem_tracker:
+                self.mem_tracker.record(f"concat_{i}", x)
+
             x = self.convs[("upconv", i, 1)](x)
+            if self.mem_tracker:
+                self.mem_tracker.records(f"upconv_{i}_1", x)
+
             if i in self.scales:
                 self.outputs[("disp", i)] = self.sigmoid(self.convs[("dispconv", i)](x))
+        
+        if self.mem_tracker:
+            self.mem_tracker.export_csv()
 
         return self.outputs

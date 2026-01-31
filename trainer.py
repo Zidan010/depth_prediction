@@ -414,14 +414,20 @@ class Trainer:
             outputs = self.models["depth"](features)
         # ===== Memory profiling ===== #
         if self.epoch == 0 and self.step == 0:
-            if hasattr(self.models['depth'], 'mem_tracker'):
-                total_mem, records = self.models["depth"].mem_tracker.summary()
-                print("\n[Depth Decoder Activation memory]")
+            self.models['depth'].mem_tracker = ActivationMemoryTracker(
+                model_name=self.opt.model_name,
+                decoder_type="baseline" if self.opt.encoder_model == 'resnet' else "mobile_depth",
+                input_shape=inputs["color_aug", 0, 0].shape[-2:]
+            )
+            # if hasattr(self.models['depth'], 'mem_tracker'):
+            #     total_mem, records = self.models["depth"].mem_tracker.summary()
+            #     print("\n[Depth Decoder Activation memory]")
 
-                for r in records:
-                    print(f"{r['layer']:20s} {r['shape']} {r['memory_MB']:.2f} MB")
-                print(f"\nTotal decoder activation memory: {total_mem:.2f} MB\n")
+            #     for r in records:
+            #         print(f"{r['layer']:20s} {r['shape']} {r['memory_MB']:.2f} MB")
+            #     print(f"\nTotal decoder activation memory: {total_mem:.2f} MB\n")
         # ==============================
+
         if self.opt.predictive_mask:
             outputs["predictive_mask"] = self.models["predictive_mask"](features)
 

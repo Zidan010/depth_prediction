@@ -269,29 +269,79 @@ def compute_depth_errors(gt, pred):
     return abs_rel, sq_rel, rmse, rmse_log, a1, a2, a3
 
 
+# class ActivationMemoryTracker:
+#     def __init__(self):
+#         self.records = []
+
+#     def hook(self, name):
+#         def fn(module, inp, out):
+#             if isinstance(out, (list, tuple)):
+#                 for o in out:
+#                     self._record(name, o)
+#             else:
+#                 self._record(name, out)
+#         return fn
+
+#     def _record(self, name, tensor):
+#         if not torch.is_tensor(tensor):
+#             return
+#         mem = tensor.numel() * tensor.element_size()
+#         self.records.append({
+#             "layer": name,
+#             "shape": list(tensor.shape),
+#             "memory_MB": mem / (1024 ** 2)
+#         })
+
+#     def summary(self):
+#         total = sum(r["memory_MB"] for r in self.records)
+#         return total, self.records
+
+import csv
+import os
+
 class ActivationMemoryTracker:
-    def __init__(self):
+    def __init__(self, model_name, decoder_type, input_shape, out_dir="profiling"):
+        self.model_name = model_name
+        self.decoder_type = decoder_type
+        self.input_shape = input_shape  # (H, W)
         self.records = []
+        self.out_dir = out_dir
+        os.makedirs(out_dir, exist_ok=True)
 
-    def hook(self, name):
-        def fn(module, inp, out):
-            if isinstance(out, (list, tuple)):
-                for o in out:
-                    self._record(name, o)
-            else:
-                self._record(name, out)
-        return fn
-
-    def _record(self, name, tensor):
-        if not torch.is_tensor(tensor):
+    def record(self, layer_name, tensor):
+        if tensor is None:
             return
-        mem = tensor.numel() * tensor.element_size()
+
+        b, c, h, w = tensor.shape
+        mem_bytes = tensor.numel() * tensor.element_size()
+        mem_mb = mem_bytes / (1024 ** 2)
+
         self.records.append({
-            "layer": name,
-            "shape": list(tensor.shape),
-            "memory_MB": mem / (1024 ** 2)
+            "model_name": self.model_name,
+            "decoder_type": self.decoder_type,
+            "layer_name": layer_name,
+            "channels": c,
+            "height": h,
+            "width": w,
+            "activation_MB": mem_mb,
+            "input_height": self.input_shape[0],
+            "input_width": self.input_shape[1],
         })
 
-    def summary(self):
-        total = sum(r["memory_MB"] for r in self.records)
-        return total, self.records
+    def export_csv(self):
+        total_mem = sum(r["activation_MB"] for r in self.records)
+
+        for r in self.records:
+            r["total_decoder_MB"] = total_mem
+
+        csv_path = os.path.join(
+            self.out_dir,
+            f"{self.model_name}_{self.decoder_type}_decoder_memory.csv"
+        )
+
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=self.records[0].keys())
+            writer.writeheader()
+            writer.writerows(self.records)
+
+        print(f"[MemoryProfiler] Exported: {csv_path}")
