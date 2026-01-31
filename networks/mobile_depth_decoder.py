@@ -101,11 +101,16 @@ class MobileDepthDecoder(nn.Module):
                 ),
                 nn.BatchNorm2d(self.num_ch_dec[i]),
                 nn.ReLU(inplace=True),
-            )
+            ) 
 
         # --------------------------------------------------
         # 3. Final depth head (single-scale)
         # --------------------------------------------------
+        self.disp_head = nn.Sequential(
+            nn.Conv2d(self.num_ch_dec[0], 1, kernel_size=3, padding=1),
+            nn.Sigmoid()
+        )
+        
         for name, module in self.convs.items():
             module.register_forward_hook(
                 lambda m, i, o, n=name: (
