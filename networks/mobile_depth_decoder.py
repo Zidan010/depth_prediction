@@ -48,7 +48,8 @@ class MobileDepthDecoder(nn.Module):
         self.num_ch_dec = [16, 24, 32, 64, 160]
 
         self.convs = OrderedDict()
-        self.mem_tracker = ActivationMemoryTracker()
+        # self.mem_tracker = ActivationMemoryTracker()
+        self.mem_tracker = None
         
         # --------------------------------------------------
         # 1. Project encoder features → decoder channels
@@ -110,21 +111,21 @@ class MobileDepthDecoder(nn.Module):
             nn.Conv2d(self.num_ch_dec[0], 1, kernel_size=3, padding=1),
             nn.Sigmoid()
         )
-        
-        for name, module in self.convs.items():
-            module.register_forward_hook(
-                lambda m, i, o, n=name: (
-                    self.mem_tracker.hook(n)(m, i, o)
-                    if self.mem_tracker is not None else None
-                )
-            )
 
-        self.disp_head.register_forward_hook(
-            lambda m, i, o: (
-                self.mem_tracker.hook("disp_head")(m, i, o)
-                if self.mem_tracker is not None else None
-            )
-        )
+        # for name, module in self.convs.items():
+        #     module.register_forward_hook(
+        #         lambda m, i, o, n=name: (
+        #             self.mem_tracker.hook(n)(m, i, o)
+        #             if self.mem_tracker is not None else None
+        #         )
+        #     )
+
+        # self.disp_head.register_forward_hook(
+        #     lambda m, i, o: (
+        #         self.mem_tracker.hook("disp_head")(m, i, o)
+        #         if self.mem_tracker is not None else None
+        #     )
+        # )
 
 
         # Register all layers
@@ -136,17 +137,25 @@ class MobileDepthDecoder(nn.Module):
             list of 5 tensors from encoder
             resolutions: [1/2, 1/4, 1/8, 1/16, 1/32]
         """
-
+        if self.mem_tracker is not None:
+            self.mem_tracker.records.clear()
         # Start from deepest feature
+
         x = self.convs["skip_proj_4"](input_features[4])
+        if self.mem_tracker:
+            self.mem_tracker.record("encoder_out", x)
 
         for i in range(4, -1, -1):
 
             # Upsample spatially
             x = self.convs[f"up_{i}"](x)
+            if self.mem_tracker:
+                self.mem_tracker.record(f"up_{i}", x)
 
             # Reduce channels
             x = self.convs[f"up_proj_{i}"](x)
+            if self.mem_tracker:
+                self.mem_tracker.record(f"skip_proj_{i}", skip)
 
             # Project skip
             skip = self.convs[f"skip_proj_{i}"](input_features[i])
@@ -162,11 +171,17 @@ class MobileDepthDecoder(nn.Module):
 
             # Additive fusion (memory-efficient)
             x = x + skip
-
+            if self.mem_tracker:
+                self.mem_tracker.record(f"add_{i}", x)
+            
             # Refinement
             x = self.convs[f"conv_{i}"](x)
+            if self.mem_tracker:
+                self.mem_tracker.record(f"conv_{i}", x)
 
         disp = self.disp_head(x)
+        if self.mem_tracker:
+            self.mem_tracker.record("disp", disp)
 
         return {("disp", 0): disp}
 
