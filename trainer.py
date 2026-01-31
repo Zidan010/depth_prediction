@@ -653,6 +653,14 @@ class Trainer:
 
             mean_disp = disp.mean(2, True).mean(3, True)
             norm_disp = disp / (mean_disp + 1e-7)
+
+            if norm_disp.shape[:2:] != color.shape[:-2:]:
+                norm_disp = torch.nn.functional.interpolate(
+                    norm_disp,
+                    size=color.shape[-2:],
+                    mode='bilinear',
+                    align_corners=False
+                )
             smooth_loss = get_smooth_loss(norm_disp, color)
 
             loss += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
