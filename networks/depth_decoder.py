@@ -65,7 +65,7 @@ class DepthDecoder(nn.Module):
         for i in range(4, -1, -1):
             x = self.convs[("upconv", i, 0)](x)
             if self.mem_tracker:
-                self.mem_tracker.records(f"upconv_{i}_0", x)
+                self.mem_tracker.record(f"upconv_{i}_0", x)
 
             x = [upsample(x)]
             if self.use_skips and i > 0:
@@ -76,7 +76,7 @@ class DepthDecoder(nn.Module):
 
             x = self.convs[("upconv", i, 1)](x)
             if self.mem_tracker:
-                self.mem_tracker.records(f"upconv_{i}_1", x)
+                self.mem_tracker.record(f"upconv_{i}_1", x)
 
             if i in self.scales:
                 self.outputs[("disp", i)] = self.sigmoid(self.convs[("dispconv", i)](x))
