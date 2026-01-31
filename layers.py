@@ -267,3 +267,31 @@ def compute_depth_errors(gt, pred):
     sq_rel = torch.mean((gt - pred) ** 2 / gt)
 
     return abs_rel, sq_rel, rmse, rmse_log, a1, a2, a3
+
+
+class ActivationMemoryTracker:
+    def __init__(self):
+        self.records = []
+
+    def hook(self, name):
+        def fn(module, inp, out):
+            if isinstance(out, (list, tuple)):
+                for o in out:
+                    self._record(name, o)
+            else:
+                self._record(name, out)
+        return fn
+
+    def _record(self, name, tensor):
+        if not torch.is_tensor(tensor):
+            return
+        mem = tensor.numel() * tensor.element_size()
+        self.records.append({
+            "layer": name,
+            "shape": list(tensor.shape),
+            "memory_MB": mem / (1024 ** 2)
+        })
+
+    def summary(self):
+        total = sum(r["memory_MB"] for r in self.records)
+        return total, self.records
