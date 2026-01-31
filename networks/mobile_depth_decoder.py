@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
+from layers import ActivationMemoryTracker
 
 
 class DWUpsample(nn.Module):
@@ -47,7 +48,8 @@ class MobileDepthDecoder(nn.Module):
         self.num_ch_dec = [16, 24, 32, 64, 160]
 
         self.convs = OrderedDict()
-
+        self.mem_tracker = ActivationMemoryTracker()
+        
         # --------------------------------------------------
         # 1. Project encoder features → decoder channels
         # --------------------------------------------------
@@ -104,9 +106,24 @@ class MobileDepthDecoder(nn.Module):
         # --------------------------------------------------
         # 3. Final depth head (single-scale)
         # --------------------------------------------------
-        self.disp_head = nn.Sequential(
-            nn.Conv2d(self.num_ch_dec[0], 1, kernel_size=3, padding=1),
-            nn.Sigmoid()
+        for name, module in self.convs.items():
+            module.register_forward_hook(
+                lambda m, i, o, n=name: (
+                    self.mem_tracker.hook(n)(m, i, o)
+                    if self.mem_tracker is not None else None
+                )
+            )
+
+        self.disp_head.register_forward_hook(
+            lambda m, i, o: (
+                self.mem_tracker.hook("disp_head")(m, i, o)
+                if self.mem_tracker is not None else None
+            )
+        )
+
+        
+        self.disp_head.register_forward_hook(
+            self.mem_tracker.hook("disp_head")
         )
 
         # Register all layers
