@@ -121,10 +121,6 @@ class MobileDepthDecoder(nn.Module):
             )
         )
 
-        
-        self.disp_head.register_forward_hook(
-            self.mem_tracker.hook("disp_head")
-        )
 
         # Register all layers
         self.net = nn.ModuleList(self.convs.values())
