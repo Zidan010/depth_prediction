@@ -195,5 +195,6 @@ class MobileDepthDecoder(nn.Module):
             
         # disp = self.disp_head(x)
 
-        return {("disp", 0): disp}
+        # return {("disp", 0): disp}
+        return self.outputs
 
