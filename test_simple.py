@@ -187,9 +187,15 @@ def test_simple(args):
 
     logger.info(f"Loading depth decoder")
     print("   Loading pretrained decoder")
-    depth_decoder = networks.DepthDecoder(
-        num_ch_enc=encoder.num_ch_enc, scales=range(4)
-    )
+    if args.decoder == 'resnet':
+        depth_decoder = networks.DepthDecoder(
+            num_ch_enc=encoder.num_ch_enc, scales=range(4)
+        )
+    
+    else:
+        depth_decoder = networks.MobileDepthDecoder(
+            num_ch_enc=encoder.num_ch_enc, num_scales=4
+        )
 
     loaded_dict = torch.load(depth_decoder_path, map_location=device)
     depth_decoder.load_state_dict(loaded_dict)
