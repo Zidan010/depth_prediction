@@ -196,5 +196,7 @@ class MobileDepthDecoder(nn.Module):
         # disp = self.disp_head(x)
 
         # return {("disp", 0): disp}
+        if self.mem_tracker:
+            self.mem_tracker.export_csv()
         return self.outputs
 
