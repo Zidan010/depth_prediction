@@ -145,7 +145,7 @@ class MobileDepthDecoder(nn.Module):
             self.mem_tracker.records.clear()
         # Start from deepest feature
 
-        outputs = {}
+        self.outputs = {}
 
         x = self.convs["skip_proj_4"](input_features[4])
         if self.mem_tracker:
@@ -189,7 +189,7 @@ class MobileDepthDecoder(nn.Module):
 
             if i < self.num_scales:
                 disp = self.disp_heads[str(i)](x)
-                outputs[('disp', i)] = disp
+                self.outputs[('disp', i)] = disp
                 if self.mem_tracker:
                     self.mem_tracker.record(f"disp_{i}", disp)
             
