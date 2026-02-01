@@ -37,11 +37,13 @@ class MobileDepthDecoder(nn.Module):
     - Single-scale depth output (scale 0)
     """
 
-    def __init__(self, num_ch_enc):
+    def __init__(self, num_ch_enc, num_scales=1):
         super().__init__()
 
+        assert num_scales in [1, 2, 3, 4], "num_scales must be 1-4"
+
         self.num_ch_enc = num_ch_enc
-        self.num_scales = 1
+        self.num_scales = num_scales
 
         # Decoder channel widths (low-memory, mobile-safe)
         # Must align with skip projections
@@ -107,10 +109,12 @@ class MobileDepthDecoder(nn.Module):
         # --------------------------------------------------
         # 3. Final depth head (single-scale)
         # --------------------------------------------------
-        self.disp_head = nn.Sequential(
-            nn.Conv2d(self.num_ch_dec[0], 1, kernel_size=3, padding=1),
-            nn.Sigmoid()
-        )
+        self.disp_heads = nn.ModuleDict()
+        for s in range(self.num_scales):
+            self.disp_heads[str(s)] = nn.Sequential(
+                nn.Conv2d(self.num_ch_dec[s], 1, kernel_size=3, padding=1),
+                nn.Sigmoid()
+            )
 
         # for name, module in self.convs.items():
         #     module.register_forward_hook(
@@ -141,6 +145,8 @@ class MobileDepthDecoder(nn.Module):
             self.mem_tracker.records.clear()
         # Start from deepest feature
 
+        outputs = {}
+
         x = self.convs["skip_proj_4"](input_features[4])
         if self.mem_tracker:
             self.mem_tracker.record("encoder_out", x)
@@ -155,10 +161,12 @@ class MobileDepthDecoder(nn.Module):
             # Reduce channels
             x = self.convs[f"up_proj_{i}"](x)
             if self.mem_tracker:
-                self.mem_tracker.record(f"skip_proj_{i}", skip)
+                self.mem_tracker.record(f"up_proj_{i}", x)
 
             # Project skip
             skip = self.convs[f"skip_proj_{i}"](input_features[i])
+            if self.mem_tracker:
+                self.mem_tracker.record(f"skip_proj_{i}", skip)
 
             # Ensure spatial alignment (KITTI odd sizes)
             if x.shape[-2:] != skip.shape[-2:]:
@@ -179,9 +187,13 @@ class MobileDepthDecoder(nn.Module):
             if self.mem_tracker:
                 self.mem_tracker.record(f"conv_{i}", x)
 
-        disp = self.disp_head(x)
-        if self.mem_tracker:
-            self.mem_tracker.record("disp", disp)
+            if i < self.num_scales:
+                disp = self.disp_heads[str(i)](x)
+                outputs[('disp', i)] = disp
+                if self.mem_tracker:
+                    self.mem_tracker.record(f"disp_{i}", disp)
+            
+        # disp = self.disp_head(x)
 
         return {("disp", 0): disp}
 
