@@ -101,6 +101,13 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--decoder",
+        type=str,
+        default='mobile_depth_decoder',
+        help="which decoder model to use: depth_decoder or mobile_depth_decoder. Default mobile_depth_decoder",
+    )
+
+    parser.add_argument(
         "--ext", type=str, help="image extension to search for in folder", default="png"
     )
     parser.add_argument("--no_cuda", help="if set, disables CUDA", action="store_true")
@@ -187,7 +194,7 @@ def test_simple(args):
 
     logger.info(f"Loading depth decoder")
     print("   Loading pretrained decoder")
-    if args.decoder == 'resnet':
+    if args.decoder == 'depth_decoder':
         depth_decoder = networks.DepthDecoder(
             num_ch_enc=encoder.num_ch_enc, scales=range(4)
         )
