@@ -61,7 +61,7 @@ class Trainer:
         else:
             self.models["encoder"] = networks.MobileNetEncoder()
             self.models['depth'] = networks.MobileDepthDecoder(
-                self.models['encoder'].num_ch_enc
+                self.models['encoder'].num_ch_enc, self.num_scales
             )
         
         self.models["encoder"].to(self.device)
