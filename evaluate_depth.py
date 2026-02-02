@@ -61,6 +61,8 @@ def evaluate(opt):
     """
     MIN_DEPTH = 1e-3
     MAX_DEPTH = 80
+    
+    img_ext = ".png" if opt.png else ".jpg"
 
     assert sum((opt.eval_mono, opt.eval_stereo)) == 1, \
         "Please choose mono or stereo evaluation by setting either --eval_mono or --eval_stereo"
@@ -82,7 +84,7 @@ def evaluate(opt):
 
         dataset = datasets.KITTIRAWDataset(opt.data_path, filenames,
                                            encoder_dict['height'], encoder_dict['width'],
-                                           [0], 4, is_train=False, img_ext=opt.png)
+                                           [0], 4, is_train=False, img_ext=img_ext)
         dataloader = DataLoader(dataset, 16, shuffle=False, num_workers=opt.num_workers,
                                 pin_memory=True, drop_last=False)
 
