@@ -55,6 +55,26 @@ def get_cpu_mem_mb():
     return process.memory_info().rss / (1024 ** 2)
 
 
+def get_memory_mb(device):
+    """
+    Returns memory usage in MB based on device type
+    
+    :param device: device to be used. CPU or CUDA
+    """
+
+    if device.type == "cuda":
+        return torch.cuda.memory_allocated(device) / (1024 ** 2)
+    else:
+        process = psutil.Process(os.getpid())
+        return process.memory_info().rss / (1024 ** 2)
+
+
+def get_peak_gpu_mem_mb(device):
+    if device.type == "cuda":
+        return torch.cuda.max_memory_allocated(device) / (1024 ** 2)
+
+    return None
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Simple testing funtion for Monodepthv2 models."
@@ -130,17 +150,22 @@ def test_simple(args):
     ), "You must specify either --model_name or --model_path"
 
     logger = setup_logger()
+    logger.info(f"==" * 100)
     logger.info("Starting depth_prediction inference")
 
     if torch.cuda.is_available() and not args.no_cuda:
         device = torch.device("cuda")
+        torch.cuda.reset_peak_memory_stats(device)
     else:
         device = torch.device("cpu")
 
     logger.info(f"Device: {device}")
 
-    cpu_mem_start = get_cpu_mem_mb()
-    logger.info(f"Initial CPU memory: {cpu_mem_start:.2f} MB")
+    # cpu_mem_start = get_cpu_mem_mb()
+    mem_start = get_memory_mb(device)
+    logger.info(
+    f"Initial {'GPU' if device.type == 'cuda' else 'CPU'} memory: {mem_start:.2f} MB"
+    )
 
     if args.model_path is not None:
         model_path = args.model_path
@@ -222,7 +247,7 @@ def test_simple(args):
     else:
         raise Exception("Can not find args.image_path: {}".format(args.image_path))
 
-    logger.info("Running warp-up")
+    logger.info("Running warm-up")
     dummy = torch.zeros((1, 3, feed_height, feed_width)).to(device)
     with torch.no_grad():
         for _ in range(5):
@@ -294,10 +319,12 @@ def test_simple(args):
             )
             im.save(name_dest_im)
 
+            current_mem = get_memory_mb(device)
+
             logger.info(
                 f"[{idx + 1}/{len(paths)}] "
                 f"Latency: {latency_ms:.2f} ms | "
-                f"CPU Mem: {get_cpu_mem_mb():.2f} MB | "
+                f"{'GPU' if device.type == 'cuda' else 'CPU'} Mem: {current_mem:.2f} MB | "
                 f"Image: {os.path.basename(image_path)}"
             )
 
@@ -314,13 +341,22 @@ def test_simple(args):
     # summary
 
     avg_latency = sum(latencies_ms) / len(latencies_ms)
-    cpu_mem_end = get_cpu_mem_mb()
+    mem_end = get_memory_mb(device)
 
     logger.info("Inference completed")
     logger.info(f"Average latency: {avg_latency:.2f} ms")
-    logger.info(f"Final CPU memory: {cpu_mem_end:.2f} MB")
-    logger.info(f"CPU memory increase: {cpu_mem_end - cpu_mem_start:.2f} MB")
+
+    if device.type == "cuda":
+        peak_gpu_mem = get_peak_gpu_mem_mb(device)
+        logger.info(f"Final GPU memory: {mem_end:.2f} MB")
+        logger.info(f"Peak GPU memory: {peak_gpu_mem:.2f} MB")
+        logger.info(f"GPU memory increase: {mem_end - mem_start:.2f} MB")
+    else:
+        logger.info(f"Final CPU memory: {mem_end:.2f} MB")
+        logger.info(f"CPU memory increase: {mem_end - mem_start:.2f} MB")
+    logger.info(f"==" * 100)
     logger.info(f"\n")
+
 
 
 if __name__ == "__main__":
