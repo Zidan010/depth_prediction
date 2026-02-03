@@ -93,7 +93,7 @@ def evaluate(opt):
             depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
         else:
             encoder = networks.MobileNetEncoder()
-            decoder = networks.MobileDepthDecoder(
+            depth_decoder = networks.MobileDepthDecoder(
                 num_ch_enc=encoder.num_ch_enc,
                 num_scales=4
             )
