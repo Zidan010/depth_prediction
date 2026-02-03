@@ -88,8 +88,15 @@ def evaluate(opt):
         dataloader = DataLoader(dataset, 16, shuffle=False, num_workers=opt.num_workers,
                                 pin_memory=True, drop_last=False)
 
-        encoder = networks.ResnetEncoder(opt.num_layers, False)
-        depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+        if opt.encoder == 'resnet':
+            encoder = networks.ResnetEncoder(opt.num_layers, False)
+            depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+        else:
+            encoder = networks.MobileNetEncoder()
+            decoder = networks.MobileDepthDecoder(
+                num_ch_enc=encoder.num_ch_enc,
+                num_scales=4
+            )
 
         model_dict = encoder.state_dict()
         encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
