@@ -65,6 +65,8 @@ class MobileMonoEncoder(nn.Module):
     def __init__(self):
         super().__init__()
 
+        self.num_ch_enc = np.array([32, 24, 32, 64, 160])
+
         self.stem = nn.Sequential(
             nn.Conv2d(3, 32, 3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(32),
