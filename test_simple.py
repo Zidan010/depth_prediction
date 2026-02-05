@@ -117,7 +117,7 @@ def parse_args():
         "--encoder",
         type=str,
         default="mobilenet",
-        help="which encoder model to use: mobilenet or resnet. Default mobilenet",
+        help="which encoder model to use: mobilenet, resnet or mobilemono. Default mobilenet",
     )
 
     parser.add_argument(
@@ -200,6 +200,11 @@ def test_simple(args):
     if args.encoder == "resnet":
         print(f"   Loading pretrained encoder [{args.encoder}]")
         encoder = networks.ResnetEncoder(18, False)
+        loaded_dict_enc = torch.load(encoder_path, map_location=device)
+    
+    elif args.encoder == "mobilemono":
+        print(f"   Loading pretrained encoder [{args.encoder}]")
+        encoder = networks.MobileMonoEncoder()
         loaded_dict_enc = torch.load(encoder_path, map_location=device)
 
     else:

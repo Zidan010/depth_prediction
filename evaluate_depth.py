@@ -91,6 +91,14 @@ def evaluate(opt):
         if opt.encoder_model == 'resnet':
             encoder = networks.ResnetEncoder(opt.num_layers, False)
             depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+
+        elif opt.encoder_model == 'mobilemono':
+            encoder = networks.MobileMonoEncoder()
+            depth_decoder = networks.MobileDepthDecoder(
+                num_ch_enc=encoder.num_ch_enc,
+                num_scales=4
+            )
+
         else:
             encoder = networks.MobileNetEncoder()
             depth_decoder = networks.MobileDepthDecoder(
