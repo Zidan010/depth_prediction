@@ -175,7 +175,7 @@ class MonodepthOptions:
             type=str,
             help="Encoder model, either resnet or mobilenet",
             default="mobilenet",
-            choices=["mobilenet", "resnet"],
+            choices=["mobilenet", "resnet", "mobilemono"],
         )
 
         # SYSTEM options
