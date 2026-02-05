@@ -47,7 +47,7 @@ class MobileDepthDecoder(nn.Module):
 
         # Decoder channel widths (low-memory, mobile-safe)
         # Must align with skip projections
-        self.num_ch_dec = [16, 24, 32, 96, 320]
+        self.num_ch_dec = [16, 24, 32, 64, 160]
 
         self.convs = OrderedDict()
         # self.mem_tracker = ActivationMemoryTracker()
