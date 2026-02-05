@@ -58,6 +58,12 @@ class Trainer:
                 self.models['encoder'].num_ch_enc, self.opt.scales
             )
 
+        elif self.opt.encoder_model == 'mobilemono':
+            self.models["encoder"] = networks.MobileMonoEncoder()
+            self.models["depth"] = networks.MobileDepthDecoder(
+                self.models["encoder"].num_ch_enc, self.num_scales
+            )
+
         else:
             self.models["encoder"] = networks.MobileNetEncoder()
             self.models['depth'] = networks.MobileDepthDecoder(
