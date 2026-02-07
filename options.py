@@ -178,6 +178,14 @@ class MonodepthOptions:
             choices=["mobilenet", "resnet", "mobilemono"],
         )
 
+        self.parser.add_argument(
+            "--decoder_model",
+            type=str,
+            help="decoder model for mobilenet, mobile_depth or mobile_depth_v2",
+            default='mobile_depth',
+            choices=["mobile_depth", "mobile_depth_v2"]
+        )
+
         # SYSTEM options
         self.parser.add_argument(
             "--no_cuda", help="if set disables CUDA", action="store_true"
