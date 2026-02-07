@@ -71,7 +71,7 @@ class Trainer:
                     num_ch_enc=self.models["encoder"].num_ch_enc,
                     num_scales=self.num_scales,
                     use_eca=True,
-                    use_scale_modulation=True,
+                    use_scale_modulation=False,
                     use_edge_aware=False
                 )        
             else:
