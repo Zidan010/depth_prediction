@@ -427,11 +427,13 @@ class Trainer:
             # Otherwise, we only feed the image with frame_id 0 through the depth encoder
             features = self.models["encoder"](inputs["color_aug", 0, 0])
             outputs = self.models["depth"](features)
+        
+        decoder_type = self.opt.decoder_model
         # ===== Memory profiling ===== #
         if self.epoch == 0 and self.step == 0:
             self.models['depth'].mem_tracker = ActivationMemoryTracker(
                 model_name=self.opt.model_name,
-                decoder_type="baseline" if self.opt.encoder_model == 'resnet' else "mobile_depth",
+                decoder_type=decoder_type,
                 input_shape=inputs["color_aug", 0, 0].shape[-2:]
             )
             # if hasattr(self.models['depth'], 'mem_tracker'):

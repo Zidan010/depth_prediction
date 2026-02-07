@@ -119,9 +119,7 @@ class MobileDepthDecoderV2(nn.Module):
         self.num_ch_dec = [16, 24, 32, 64, 160]
 
         self.convs = OrderedDict()
-        self.mem_tracker = (
-            ActivationMemoryTracker() if enable_memory_tracker else None
-        )
+        self.mem_tracker = None
 
         # --------------------------------------------------
         # Skip projections
