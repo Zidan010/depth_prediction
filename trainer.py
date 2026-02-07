@@ -66,9 +66,18 @@ class Trainer:
 
         else:
             self.models["encoder"] = networks.MobileNetEncoder()
-            self.models['depth'] = networks.MobileDepthDecoder(
-                self.models['encoder'].num_ch_enc, self.num_scales
-            )
+            if self.opt.decoder_model == "mobile_depth_v2":
+                self.models["depth"] = networks.MobileDepthDecoderV2(
+                    num_ch_enc=self.models["encoder"].num_ch_enc,
+                    num_scales=self.num_scales,
+                    use_eca=True,
+                    use_scale_modulation=True,
+                    use_edge_aware=True
+                )        
+            else:
+                self.models['depth'] = networks.MobileDepthDecoder(
+                    self.models['encoder'].num_ch_enc, self.num_scales
+                )
         
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters()) 

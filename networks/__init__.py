@@ -5,4 +5,5 @@ from .depth_decoder import DepthDecoder
 from .mobile_depth_decoder import MobileDepthDecoder
 from .pose_decoder import PoseDecoder
 from .pose_cnn import PoseCNN
+from .mobile_depth_decoder_v2 import MobileDepthDecoderV2
 
