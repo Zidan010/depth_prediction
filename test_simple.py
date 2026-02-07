@@ -231,7 +231,7 @@ def test_simple(args):
     
     elif args.decoder == "mobile_depth_v2":
         depth_decoder = networks.MobileDepthDecoderV2(
-            num_ch_enc=encoder.num_ch_enc, num_scales=4
+            num_ch_enc=encoder.num_ch_enc, num_scales=4, enable_memory_tracker=False
         )
     
     else:
