@@ -106,7 +106,6 @@ def evaluate(opt):
                     num_ch_enc=encoder.num_ch_enc,
                     use_eca=True,
                     use_scale_modulation=False,
-                    enable_memory_tracker=False,
                     num_scales=4
                 )
             
