@@ -72,7 +72,7 @@ class Trainer:
                     num_scales=self.num_scales,
                     use_eca=True,
                     use_scale_modulation=True,
-                    use_edge_aware=True
+                    use_edge_aware=False
                 )        
             else:
                 self.models['depth'] = networks.MobileDepthDecoder(
