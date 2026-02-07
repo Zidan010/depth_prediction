@@ -103,7 +103,6 @@ class MobileDepthDecoderV2(nn.Module):
         use_eca=False,
         use_scale_modulation=False,
         use_edge_aware=False,
-        enable_memory_tracker=True,
     ):
         super().__init__()
 
