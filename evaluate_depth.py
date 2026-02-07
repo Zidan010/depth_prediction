@@ -101,10 +101,17 @@ def evaluate(opt):
 
         else:
             encoder = networks.MobileNetEncoder()
-            depth_decoder = networks.MobileDepthDecoder(
-                num_ch_enc=encoder.num_ch_enc,
-                num_scales=4
-            )
+            if opt.decoder_model == 'mobile_depth_v2':
+                depth_decoder = networks.MobileDepthDecoderV2(
+                    num_ch_enc=encoder.num_ch_enc,
+                    num_scales=4
+                )
+            
+            else:
+                depth_decoder = networks.MobileDepthDecoder(
+                    num_ch_enc=encoder.num_ch_enc,
+                    num_scales=4
+                )
 
         model_dict = encoder.state_dict()
         encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
