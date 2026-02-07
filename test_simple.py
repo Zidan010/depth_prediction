@@ -234,7 +234,7 @@ def test_simple(args):
             num_ch_enc=encoder.num_ch_enc,
             num_scales=4,
             use_eca=True,
-            use_scale_modulation=True,
+            use_scale_modulation=False,
             enable_memory_tracker=False
         )
     
