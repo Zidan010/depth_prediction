@@ -183,7 +183,7 @@ class MonodepthOptions:
             type=str,
             help="decoder model for mobilenet, mobile_depth or mobile_depth_v2",
             default='mobile_depth',
-            choices=["mobile_depth", "mobile_depth_v2"]
+            choices=["baseline", "mobile_depth", "mobile_depth_v2"]
         )
 
         # SYSTEM options
