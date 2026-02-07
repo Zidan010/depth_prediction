@@ -104,6 +104,9 @@ def evaluate(opt):
             if opt.decoder_model == 'mobile_depth_v2':
                 depth_decoder = networks.MobileDepthDecoderV2(
                     num_ch_enc=encoder.num_ch_enc,
+                    use_eca=True,
+                    use_scale_modulation=True,
+                    enable_memory_tracker=False,
                     num_scales=4
                 )
             
